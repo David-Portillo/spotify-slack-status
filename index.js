@@ -12,7 +12,20 @@ const app = express();
 const spotifyClientId = process.env.SPOTIFY_CLIENT_ID;
 const spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
-const callbackURL = "http://localhost:3001/callback";
+let token = null;
+const port = 3001;
+const callbackURL = `http://localhost:${port}/callback`;
+const basicAuth = `Basic ${Buffer.from(
+  spotifyClientId + ":" + spotifyClientSecret
+).toString("base64")}`;
+
+const saveSpotifyToken = (data) => {
+  fs.writeFileSync('token.json', JSON.stringify(data), (err) => {
+    if (err) {
+      return console.log(err);
+    }
+  });
+};
 
 const authorizeSpotify = (userToken) => {
   axios({
@@ -24,36 +37,88 @@ const authorizeSpotify = (userToken) => {
       redirect_uri: callbackURL,
     },
     headers: {
-      Authorization: `Basic ${Buffer.from(
-        spotifyClientId + ":" + spotifyClientSecret
-      ).toString("base64")}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: basicAuth,
     },
   })
     .then(({ data }) => {
-      fs.writeFileSync("access_token", `Bearer ${data.access_token}`, (err, data) => {
-        if (err) {
-          return console.log(err);
-        }
-        console.log(data);
-      });
+      console.log('got a new token, now saving it...')
+      saveSpotifyToken(data);
+      console.log('token saved!')
     })
     .catch((error) => {
       console.log(error.message);
     });
 };
 
-// get spotify token
+const getSavedSpotifyToken = () => {
+  const tokenBuffer = fs.readFileSync("token.json");
+  return tokenBuffer.length > 0 ? JSON.parse(tokenBuffer) : null;
+}
 
-open(
-  `https://accounts.spotify.com/authorize?client_id=${spotifyClientId}&response_type=code&redirect_uri=${callbackURL}&scope=user-read-currently-playing%20user-read-playback-state`
-);
+const getSpotifyAccessToken = () => {
+  try {
+     
+    if (!getSavedSpotifyToken()) {
+      console.log("no token found in token.json, attempting to get a new token");
+      try {
+        open(
+          `https://accounts.spotify.com/authorize?client_id=${spotifyClientId}&response_type=code&redirect_uri=${callbackURL}&scope=user-read-currently-playing%20user-read-playback-state`
+        );
+      } catch (error) {
+        console.log(error.message)
+      }
+    }
+    else {
+      console.log('token found in token.json, refreshing token...')
+      refreshSpotifyToken()
+      console.log('token refreshed!')
+    }
+  } catch (error) {
+    console.log('no token.json file found, creating token.json file')
+    saveSpotifyToken(null)
+    console.log('token.json file created!')
+    getSpotifyAccessToken()
+  }
+}
+
+const refreshSpotifyToken = () => {
+    axios({
+      method: "post",
+      url: "https://accounts.spotify.com/api/token",
+      params: {
+        grant_type: "refresh_token",
+        refresh_token: getSavedSpotifyToken().refresh_token,
+      },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: basicAuth,
+      },
+    })
+      .then(({ data }) => {
+        console.log('updating token in token.json')
+        saveSpotifyToken({...getSavedSpotifyToken(),...data});
+        console.log('updated token!')
+      })
+      .catch((error) => {
+        console.log(error.message);
+      });
+  
+};
 
 app.get("/callback", (req, res) => {
-  const [, userToken] = req.url?.split("=");
-  authorizeSpotify(userToken);
+  const [, token] = req.url?.split("=");
+  authorizeSpotify(token);
   res.send("success!");
 });
 
 app.listen(3001, () => {
-  console.log("server started on port 3001");
+  console.log(`server started on port ${port}`);
+  getSpotifyAccessToken();
 });
+
+
+// process.on("SIGTERM", () => {
+//   console.log('terminating server...')
+//   server
+// })
