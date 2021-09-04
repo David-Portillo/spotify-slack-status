@@ -112,13 +112,27 @@ app.get("/callback", (req, res) => {
   res.send("success!");
 });
 
-app.listen(3001, () => {
+const server = app.listen(3001, () => {
   console.log(`server started on port ${port}`);
   getSpotifyAccessToken();
 });
 
 
-// process.on("SIGTERM", () => {
-//   console.log('terminating server...')
-//   server
-// })
+// handle server exceptions & events
+
+process.on('unhandledRejection', (error) => {
+  console.log(error.message);
+  server.close(() => process.exit(1))
+})
+
+process.on("SIGTSTP", () => {
+  console.log('server is suspended')
+})
+
+process.on("SIGINT", () => {
+  console.log('terminating server...')
+  server.close(() => process.exit(0))
+})
+
+
+
