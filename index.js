@@ -9,7 +9,7 @@ require('dotenv').config();
 const app = express();
 
 colors.setTheme({
-  data: 'grey',
+  msg: 'grey',
   info: 'green',
   warn: 'yellow',
   error: 'red',
@@ -36,7 +36,7 @@ const axiosSpotifyAccount = axios.create({
 const saveSpotifyToken = (data) => {
   fs.writeFileSync(tokenFileName, JSON.stringify(data), (err) => {
     if (err) {
-      return console.log(err);
+      return console.log(`-> ${err}`.error);
     }
   });
 };
@@ -51,13 +51,11 @@ const authorizeAccessToken = (userToken) => {
     },
   })
     .then(({ data }) => {
-      console.log('authorized new access token, now saving it...');
+      console.log('-> authorized new access token, now saving it...'.msg);
       saveSpotifyToken(data);
-      console.log(`access token saved! in ${tokenFileName}`);
+      console.log(`-> access token saved! in ${tokenFileName}`.info);
     })
-    .catch((error) => {
-      console.log(error.message);
-    });
+    .catch(handleAxiosException);
 };
 
 const savedSpotifyAccessToken = () => {
@@ -68,21 +66,21 @@ const savedSpotifyAccessToken = () => {
 const getSpotifyAccessToken = () => {
   try {
     if (!savedSpotifyAccessToken()) {
-      console.log(`no access token found in ${tokenFileName}, attempting to authorize one`.warn);
+      console.log(`-> no access token found in ${tokenFileName}, attempting to authorize one`.warn);
       try {
         open(`https://accounts.spotify.com/authorize?client_id=${spotifyClientId}&response_type=code&redirect_uri=${callbackURL}&scope=user-read-currently-playing%20user-read-playback-state`);
       } catch (error) {
-        console.log(error.message);
+        console.log(`-> ${error.message}`.error);
       }
     } else {
-      console.log(`access token found in ${tokenFileName}, refreshing token...`);
+      console.log(`-> access token found in ${tokenFileName}, refreshing token...`.msg);
       refreshSpotifyToken();
-      console.log('token refreshed!');
+      console.log('-> token refreshed!'.info);
     }
   } catch (error) {
-    console.log(`no ${tokenFileName} file found, creating token.json file`);
+    console.log(`-> no ${tokenFileName} file found, creating token.json file`.warn);
     saveSpotifyToken(null);
-    console.log(`${tokenFileName} file created!`);
+    console.log(`-> ${tokenFileName} file created!`.info);
     getSpotifyAccessToken();
   }
 };
@@ -96,27 +94,31 @@ const refreshSpotifyToken = () => {
     },
   })
     .then(({ data }) => {
-      console.log(`updating access token in ${tokenFileName}`);
+      console.log(`-> updating access token in ${tokenFileName}`.msg);
       saveSpotifyToken({ ...savedSpotifyAccessToken(), ...data });
-      console.log('updated access token!');
+      console.log('-> updated access token!'.info);
     })
-    .catch((error) => {
-      console.log(error.message);
-    });
+    .catch(handleAxiosException);
 };
 
 app.get('/callback', (req, res) => {
   const [, token] = req.url?.split('=');
   authorizeAccessToken(token);
-  res.send('success!');
+  res.send('success! 👍');
 });
 
 const server = app.listen(3001, () => {
-  console.log(`server started on port ${port}`);
+  console.log(`-> server started on port ${port} 🚀`.msg);
   getSpotifyAccessToken();
 });
 
 // handle server exceptions & events
+
+const handleAxiosException = (error) => {
+  console.log(`-> ${error.message} : ${error.response.statusText}`.error);
+  console.log(`   > error: ${error.response.data.error}`.error);
+  console.log(`   > error description: ${error.response.data.error_description}`.error);
+};
 
 process.on('unhandledRejection', (error) => {
   console.log(error.message);
@@ -124,10 +126,10 @@ process.on('unhandledRejection', (error) => {
 });
 
 process.on('SIGTSTP', () => {
-  console.log('server is suspended');
+  console.log('server is suspended'.msg);
 });
 
 process.on('SIGINT', () => {
-  console.log('terminating server...');
+  console.log('terminating server...'.msg);
   server.close(() => process.exit(0));
 });
