@@ -1,12 +1,16 @@
 const fs = require('fs');
 const open = require('open');
 const axios = require('axios').default;
-const express = require('express');
 const colors = require('colors');
+const express = require('express');
 
 require('dotenv').config();
 
 const app = express();
+
+//env credentials
+const spotifyClientId = process.env.SPOTIFY_CLIENT_ID;
+const spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
 colors.setTheme({
   msg: 'grey',
@@ -15,15 +19,10 @@ colors.setTheme({
   error: 'red',
 });
 
-//env credentials
-
-const spotifyClientId = process.env.SPOTIFY_CLIENT_ID;
-const spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-
 const port = 3001;
-const tokenFileName = 'token.json';
-const callbackURL = `http://localhost:${port}/callback`;
 const basicAuth = `Basic ${Buffer.from(spotifyClientId + ':' + spotifyClientSecret).toString('base64')}`;
+const callbackURL = `http://localhost:${port}/callback`;
+const tokenFileName = 'token.json';
 
 const axiosSpotifyAccount = axios.create({
   baseURL: 'https://accounts.spotify.com/api/token',
