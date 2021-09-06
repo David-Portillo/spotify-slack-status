@@ -9,6 +9,7 @@ require('dotenv').config();
 const app = express();
 
 colors.setTheme({
+  data: 'grey',
   info: 'green',
   warn: 'yellow',
   error: 'red',
