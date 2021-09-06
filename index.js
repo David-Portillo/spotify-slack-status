@@ -2,10 +2,17 @@ const fs = require("fs");
 const open = require("open");
 const axios = require("axios");
 const express = require("express");
+const colors = require('colors');
 
 require("dotenv").config();
 
 const app = express();
+
+colors.setTheme({
+  info: 'green',
+  warn: 'yellow',
+  error: 'red'
+});
 
 //env credentials
 

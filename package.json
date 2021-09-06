@@ -23,9 +23,9 @@
   "homepage": "https://github.com/David-Portillo/spotify-slack-status#readme",
   "dependencies": {
     "axios": "^0.21.1",
+    "colors": "^1.4.0",
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
-    "open": "^8.2.1",
-    "prompt": "^1.2.0"
+    "open": "^8.2.1"
   }
 }
