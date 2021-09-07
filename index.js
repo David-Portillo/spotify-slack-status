@@ -8,21 +8,24 @@ require('dotenv').config();
 
 const app = express();
 
-//env credentials
 const spotifyClientId = process.env.SPOTIFY_CLIENT_ID;
 const spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+const slackToken = process.env.SLACK_TOKEN;
 
 colors.setTheme({
-  msg: 'grey',
+  msg: ['grey', 'bold'],
   info: 'green',
   warn: 'yellow',
   error: 'red',
+  listening: ['magenta', 'bold'],
 });
 
 const port = 3001;
 const basicAuth = `Basic ${Buffer.from(spotifyClientId + ':' + spotifyClientSecret).toString('base64')}`;
 const callbackURL = `http://localhost:${port}/callback`;
 const tokenFileName = 'token.json';
+
+let spotifyMonitorTimer = null;
 
 const axiosSpotifyAccount = axios.create({
   baseURL: 'https://accounts.spotify.com/api/token',
@@ -31,6 +34,35 @@ const axiosSpotifyAccount = axios.create({
     Authorization: basicAuth,
   },
 });
+
+const axiosSpotifyApi = axios.create({
+  baseURL: 'https://api.spotify.com',
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+});
+
+const updateSlackStatus = (statusText = '', statusEmoji = '') => {
+  console.log('-> updating slack status...'.msg);
+  const profile = { status_text: statusText, status_emoji: statusEmoji };
+  axios({
+    method: 'post',
+    url: 'https://slack.com/api/users.profile.set',
+    data: { profile },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${slackToken}`,
+    },
+  })
+    .then(({ data }) => {
+      if (data.ok) {
+        console.log('-> slack status successfully updated'.info);
+        console.log(`-> playing: ${statusText} 🎧`.listening);
+      } else {
+        console.log('-> an error occurred when updating slack status'.error);
+        console.log(data);
+      }
+    })
+    .catch(handleAxiosException);
+};
 
 const saveSpotifyToken = (data) => {
   fs.writeFileSync(tokenFileName, JSON.stringify(data), (err) => {
@@ -53,6 +85,7 @@ const authorizeAccessToken = (userToken) => {
       console.log('-> authorized new access token, now saving it...'.msg);
       saveSpotifyToken(data);
       console.log(`-> access token saved! in ${tokenFileName}`.info);
+      startMonitoringSpotify();
     })
     .catch(handleAxiosException);
 };
@@ -95,9 +128,42 @@ const refreshSpotifyToken = () => {
     .then(({ data }) => {
       console.log(`-> updating access token in ${tokenFileName}`.msg);
       saveSpotifyToken({ ...savedSpotifyAccessToken(), ...data });
-      console.log('-> updated access token!'.info);
+      console.log(`-> updated access token! in ${tokenFileName}`.info);
+      startMonitoringSpotify();
     })
     .catch(handleAxiosException);
+};
+
+const startMonitoringSpotify = () => {
+  console.log(`-> checking for currently playing`.msg);
+  axiosSpotifyApi({
+    method: 'get',
+    url: '/v1/me/player/currently-playing',
+    headers: { Authorization: `Bearer ${savedSpotifyAccessToken().access_token}` },
+  })
+    .then(({ data }) => {
+      if (data === '' || !data.is_playing) {
+        console.log('-> nothing is playing'.warn);
+        updateSlackStatus();
+        setTimeout(() => startMonitoringSpotify(), 30000);
+      } else {
+        const currentlyPlaying = `${data.item.artists[0].name} - ${data.item.name}`;
+        spotifyMonitorTimer = data.item.duration_ms - data.progress_ms + 2000;
+        updateSlackStatus(currentlyPlaying, ':musical_note:');
+        setTimeout(() => startMonitoringSpotify(), spotifyMonitorTimer);
+      }
+    })
+    .catch((error) => {
+      if (error?.response.status === 401) {
+        console.log(`-> ${error.response.message}`.warn);
+        console.log(`-> refreshing access token...`.msg);
+        refreshSpotifyToken();
+        console.log(`-> access token refreshed!`.info);
+        startMonitoringSpotify();
+      } else {
+        handleAxiosException(error);
+      }
+    });
 };
 
 app.get('/callback', (req, res) => {
@@ -119,16 +185,20 @@ const handleAxiosException = (error) => {
   console.log(`   > error description: ${error.response.data.error_description}`.error);
 };
 
-process.on('unhandledRejection', (error) => {
-  console.log(error.message);
-  server.close(() => process.exit(1));
+process.on('SIGTSTP', () => {
+  console.log('-> suspending server'.msg);
+  updateSlackStatus();
 });
 
-process.on('SIGTSTP', () => {
-  console.log('server is suspended'.msg);
+process.on('SIGCONT', () => {
+  console.log('-> resuming server...'.msg);
+  startMonitoringSpotify();
 });
 
 process.on('SIGINT', () => {
-  console.log('terminating server...'.msg);
-  server.close(() => process.exit(0));
+  console.log('-> reseting slack status before closing server...'.msg);
+  updateSlackStatus();
+  setTimeout(() => {
+    server.close(() => process.exit(0));
+  }, 1000);
 });
