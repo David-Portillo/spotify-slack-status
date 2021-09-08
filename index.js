@@ -8,6 +8,7 @@ require('dotenv').config();
 
 const app = express();
 
+// palette setup for console logs
 colors.setTheme({
   msg: ['grey', 'bold'],
   info: 'green',
@@ -16,17 +17,19 @@ colors.setTheme({
   listening: ['magenta', 'bold'],
 });
 
+// env variables
 const slackToken = process.env.SLACK_TOKEN;
 const spotifyClientId = process.env.SPOTIFY_CLIENT_ID;
 const spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
+// setup config
 const port = 3001;
 const basicAuth = `Basic ${Buffer.from(spotifyClientId + ':' + spotifyClientSecret).toString('base64')}`;
 const callbackURL = `http://localhost:${port}/callback`;
 const tokenFileName = 'token.json';
+const defaultMonitorTimer = 30000;
 
-let spotifyMonitorTimer = null;
-
+// spotify account axios default setup for subsequent account requests
 const axiosSpotifyAccount = axios.create({
   baseURL: 'https://accounts.spotify.com/api/token',
   headers: {
@@ -35,11 +38,20 @@ const axiosSpotifyAccount = axios.create({
   },
 });
 
+// spotify api axios default setup for subsequent api requests
 const axiosSpotifyApi = axios.create({
   baseURL: 'https://api.spotify.com',
   headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 });
 
+let spotifyMonitorTimer = null;
+
+/**
+ * Update Slack status text message and emoji
+ * 
+ * @param {string} statusText message to display as Slack status
+ * @param {string} statusEmoji supported emoji string name from slack
+ */
 const updateSlackStatus = (statusText = '', statusEmoji = '') => {
   console.log('-> updating slack status...'.msg);
   const profile = { status_text: statusText, status_emoji: statusEmoji };
@@ -64,6 +76,17 @@ const updateSlackStatus = (statusText = '', statusEmoji = '') => {
     .catch(handleAxiosException);
 };
 
+/**
+ * start monitoring spotify to check currently playing songs. it utilizes setTimeout
+ * to check for what is currenlty playing at different intervals.
+ * 
+ * If nothing is playing, either by the player not being on or the song is paused, the
+ * default timer to check againg is designated by @var spotifyMonitorTimer
+ * 
+ * If something is playing then a small calculation is done to know when will the next
+ * call be performed. i.e. totalDuration - currentlyProgressed + buffer
+ * 
+ */
 const monitoringSpotify = () => {
   console.log(`-> checking for currently playing`.msg);
   axiosSpotifyApi({
@@ -75,7 +98,7 @@ const monitoringSpotify = () => {
       if (data === '' || !data.is_playing) {
         console.log('-> nothing is playing'.warn);
         updateSlackStatus();
-        setTimeout(() => monitoringSpotify(), 30000);
+        setTimeout(() => monitoringSpotify(), defaultMonitorTimer);
       } else {
         const currentlyPlaying = `${data.item.artists[0].name} - ${data.item.name}`;
         spotifyMonitorTimer = data.item.duration_ms - data.progress_ms + 2000;
