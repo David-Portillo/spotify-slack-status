@@ -107,7 +107,7 @@ const monitoringSpotify = () => {
       }
     })
     .catch((error) => {
-      if (error?.response.status === 401) {
+      if (error?.response?.status === 401) {
         console.log(`-> ${error.response.message}`.warn);
         console.log(`-> refreshing access token...`.msg);
         refreshSpotifyAccessToken();
