@@ -119,37 +119,32 @@ const monitoringSpotify = () => {
     });
 };
 
+/**
+ * save spotify access token object to a file specified by @var tokenFileName
+ * 
+ * @param {object} data spotify access token object
+ */
 const saveSpotifyAccessToken = (data) => {
   fs.writeFileSync(tokenFileName, JSON.stringify(data), (err) => {
     if (err) {
-      return console.log(`-> ${err}`.error);
+      console.log(`-> ${err}`.error);
     }
   });
 };
 
+/**
+ * retrieve saved spotify access token object
+ * 
+ * @returns null or spotify access token object
+ */
 const getSavedSpotifyAccessToken = () => {
   const tokenBuffer = fs.readFileSync(tokenFileName);
   return tokenBuffer.length > 0 ? JSON.parse(tokenBuffer) : null;
 };
 
-const authorizeAccessToken = (userToken) => {
-  axiosSpotifyAccount({
-    method: 'post',
-    params: {
-      grant_type: 'authorization_code',
-      code: userToken,
-      redirect_uri: callbackURL,
-    },
-  })
-    .then(({ data }) => {
-      console.log('-> authorized new access token, now saving it...'.msg);
-      saveSpotifyAccessToken(data);
-      console.log(`-> access token saved! in ${tokenFileName}`.info);
-      monitoringSpotify();
-    })
-    .catch(handleAxiosException);
-};
-
+/**
+ * authorize new spotify token, utilizes @var spotifyClientId, @var callbackURL 
+ */
 const authorizeSpotifyAccessToken = () => {
   try {
     if (!getSavedSpotifyAccessToken()) {
@@ -172,6 +167,9 @@ const authorizeSpotifyAccessToken = () => {
   }
 };
 
+/**
+ * refresh spotify token and update @var tokenFileName
+ */
 const refreshSpotifyAccessToken = () => {
   axiosSpotifyAccount({
     method: 'post',
@@ -189,9 +187,27 @@ const refreshSpotifyAccessToken = () => {
     .catch(handleAxiosException);
 };
 
+// handle spotify authorization callback
+
 app.get('/callback', (req, res) => {
-  const [, token] = req.url?.split('=');
-  authorizeAccessToken(token);
+  const [, userToken] = req.url?.split('=');
+
+  axiosSpotifyAccount({
+    method: 'post',
+    params: {
+      grant_type: 'authorization_code',
+      code: userToken,
+      redirect_uri: callbackURL,
+    },
+  })
+    .then(({ data }) => {
+      console.log('-> authorized new access token, now saving it...'.msg);
+      saveSpotifyAccessToken(data);
+      console.log(`-> access token saved! in ${tokenFileName}`.info);
+      monitoringSpotify();
+    })
+    .catch(handleAxiosException);
+
   res.send('success! 👍');
 });
 
