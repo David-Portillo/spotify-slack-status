@@ -25,6 +25,6 @@ spotify-slack-status updates your slack status to what you are currently listeni
 2. log in or create an account
 3. navigate to your dashboard and create an app
 
-![spotify create app]()
+![spotify create app](https://github.com/David-Portillo/spotify-slack-status/blob/master/readme/spotify_create_app.png)
 
 4. enter your app details, any info for app name and app description should suffice
