@@ -37,4 +37,4 @@ spotify-slack-status updates your slack status to what you are currently listeni
 3. Navigate to your dashboard and create an app
 4. Enter your app details - any info for app name and app description should suffice
 5. Open your app properties and type in localhost:3001/ under Redirect URI and save changes
-6. Copy the client ID and client secret and paste it in you .env file
+6. Copy the client ID and client secret and paste it in your .env file
