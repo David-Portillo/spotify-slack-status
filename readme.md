@@ -19,14 +19,22 @@ spotify-slack-status updates your slack status to what you are currently listeni
 
 ##### HOW TO GET A SLACK TOKEN?
 
+1. Login at https://api.slack.com/apps
+2. Click create an app
+3. Select "From Scratch" option
+4. Enter an app name and choose a workspace and create app
+5. Under "Add features and functionality" click on permissions
+6. Under "Oauth Tokens for your Workspace" copy your User Oauth Token, it should start with xoxp
+7. Under "User Token Scopes" type in users.profile:write
+8. Navigate back to your apps
+9. Under "Install your app" click on "Install to Workspace" and click allow
+10. Add users.profile:write permission to your app and install it to your workspace
+
 ##### HOW TO GET A SPOTIFY TOKEN?
 
-1. navigate to https://developer.spotify.com/dashboard/
-2. log in or create an account
-3. navigate to your dashboard and create an app
-
-![spotify create app image](https://github.com/David-Portillo/spotify-slack-status/blob/master/readme/spotify_create_app.png)
-
-4. enter your app details, any info for app name and app description should suffice
-
-![spotify app details image](https://github.com/David-Portillo/spotify-slack-status/blob/master/readme/spotify_create_app_details.png)
+1. Navigate to https://developer.spotify.com/dashboard/
+2. Log in or create an account
+3. Navigate to your dashboard and create an app
+4. Enter your app details - any info for app name and app description should suffice
+5. Open your app properties and type in localhost:3001/ under Redirect URI and save changes
+6. Copy the client ID and client secret and paste it in you .env file
