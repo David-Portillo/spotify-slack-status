@@ -23,12 +23,13 @@ spotify-slack-status updates your slack status to what you are currently listeni
 2. Click create an app
 3. Select "From Scratch" option
 4. Enter an app name and choose a workspace and create app
+5. Navigate to your app.
 5. Under "Add features and functionality" click on permissions
 6. Under "Oauth Tokens for your Workspace" copy your User Oauth Token, it should start with xoxp
 7. Under "User Token Scopes" type in users.profile:write
-8. Navigate back to your apps
+8. Navigate back to your app's main properties
 9. Under "Install your app" click on "Install to Workspace" and click allow
-10. Add users.profile:write permission to your app and install it to your workspace
+10. Paste your Oauth token in to your .env file
 
 ##### HOW TO GET A SPOTIFY TOKEN?
 
